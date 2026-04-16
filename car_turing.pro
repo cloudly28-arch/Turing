@@ -13,7 +13,9 @@ SOURCES += \
     mainwindow.cpp
 
 HEADERS += \
-    mainwindow.h
+    mainwindow.h \
+    tapewidget.h \
+    turingtape.h
 
 FORMS += \
     mainwindow.ui

@@ -22,11 +22,22 @@ public:
     int headPosition() const { return headPos; }
     QChar blankSymbol() const { return blank; }
 
+    void clear() {
+        memory.clear(); headPos = 0; emit changed();
+    }
+    void loadWord(const QString& word) {
+        clear();
+        for (int i = 0; i < word.length(); ++i) {
+            if (word[i] != blank) memory[i] = word[i];
+        }
+        headPos = 0;
+        emit changed();
+    }
 signals:
     void changed();
 
 private:
     QHash<int, QChar> memory;
     int headPos = 0;
-    QChar blank = '_';
+    QChar blank = '^';
 };

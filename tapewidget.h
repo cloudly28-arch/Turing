@@ -77,7 +77,7 @@ protected:
             p.drawRect(qRound(x), qRound(y), cellWidth, cellHeight);
 
             QChar sym = tape->symbolAt(i);
-            QString text = (sym == blank) ? QString("_") : QString(sym);
+            QString text = (sym == blank) ? QString("^") : QString(sym);
             p.drawText(qRound(x), qRound(y), cellWidth, cellHeight, Qt::AlignCenter, text);
         }
 

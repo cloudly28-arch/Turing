@@ -39,7 +39,7 @@ int main(int argc, char *argv[]) {
     alphaLayout->addWidget(editAdd);
     alphaLayout->addWidget(btnAlpha);
 
-    // === СОСТОЯНИЯ (+ и -) ===
+    // === СОСТОЯНИЯ ===
     QStringList states = {"q0"};
     auto* statesLabel = new QLabel("Состояния: q0");
     auto* btnAddState = new QPushButton("+");
@@ -84,7 +84,7 @@ int main(int argc, char *argv[]) {
     auto* mainLayout = new QVBoxLayout;
     mainLayout->addLayout(alphaLayout); mainLayout->addLayout(statesLayout);
     mainLayout->addWidget(tableRules, 2);
-    mainLayout->addWidget(new QLabel("Формат ячейки: Символ;Направление;Состояние (допустимы запятые) | ;; = стоп | ! = экстренный стоп"));
+    mainLayout->addWidget(new QLabel("Формат: Символ;Направление;Состояние | Пробел = не менять | ! = стоп"));
     mainLayout->addLayout(wordLayout); mainLayout->addLayout(controlLayout);
     mainLayout->addWidget(tapeWidget, 3);
 
@@ -97,7 +97,6 @@ int main(int argc, char *argv[]) {
     QString initialWord = "";
     bool isRunning = false;
     int stepInterval = 800;
-    QString lastDir = "S";
     QTimer* runTimer = new QTimer(&window);
     runTimer->setSingleShot(false);
     runTimer->setInterval(stepInterval);
@@ -134,35 +133,48 @@ int main(int argc, char *argv[]) {
         QMessageBox::information(&window, "Остановка", reason);
     };
 
-    auto validateTable = [&]() -> bool {
-        bool hasHalt = false;
-        for (const QString& s : states) if (s.toLower().contains("halt") || s.toLower().contains("stop")) hasHalt = true;
-        if (!hasHalt) {
-            QMessageBox::warning(&window, "Ошибка валидации",
-                                 "В списке состояний отсутствует терминальное состояние (например, qHalt или Stop).\nЗапуск запрещён.");
-            return false;
-        }
+    // ✅ ВАЛИДАЦИЯ С ФЛАГОМ requireStop
+    auto validateTable = [&](bool requireStop = true) -> bool {
+        bool hasStop = false;
+        QRegularExpression rulePattern(R"(^[^;]*;[^;]*;[^;]*$)");
 
-        QRegularExpression rulePattern(R"(^[^;]*;[LRS]?;[^;]*$)");
         for (int r = 0; r < tableRules->rowCount(); ++r) {
             for (int c = 0; c < tableRules->columnCount(); ++c) {
                 auto* item = tableRules->item(r, c);
                 if (!item) continue;
-                QString txt = item->text().trimmed();
-                if (txt.isEmpty() || txt == ";;" || txt == ",,") continue;
+                QString txt = item->text();
+                if (txt.isEmpty()) continue;
 
+                // Единственное условие остановки - символ '!'
+                if (txt.contains('!')) hasStop = true;
+
+                // Проверка формата и направления
                 QString normalized = txt.replace(',', ';');
-                if (!rulePattern.match(normalized).hasMatch()) {
+                QStringList parts = normalized.split(';');
+                if (parts.size() != 3 || !rulePattern.match(normalized).hasMatch()) {
                     QMessageBox::warning(&window, "Ошибка формата ячейки",
-                                         QString("Ячейка [%1, %2] содержит недопустимый формат.\nОжидается: Символ;Направление(L/R/S);Состояние").arg(r+1).arg(c+1));
+                                         QString("Ячейка [%1, %2]: неверный формат.\nОжидается: Символ;Направление(L/R/S/пробел);Состояние").arg(r+1).arg(c+1));
+                    return false;
+                }
+                QString dir = parts[1].trimmed();
+                if (!dir.isEmpty() && dir != "L" && dir != "R" && dir != "S") {
+                    QMessageBox::warning(&window, "Ошибка направления",
+                                         QString("Ячейка [%1, %2]: направление должно быть L, R, S или пусто/пробел.").arg(r+1).arg(c+1));
                     return false;
                 }
             }
+        }
+
+        if (requireStop && !hasStop) {
+            QMessageBox::warning(&window, "Ошибка валидации",
+                                 "В таблице не задано ни одного условия остановки (символ '!').\nСогласно ТЗ, автозапуск запрещён.");
+            return false;
         }
         return true;
     };
 
     auto executeStep = [&]() {
+        // 🛑 Остановка при '!' на ленте
         if (tape->read() == '!') {
             stopExecution("Головка прочитала символ '!'. Аварийная остановка."); return;
         }
@@ -179,35 +191,37 @@ int main(int argc, char *argv[]) {
             stopExecution("Ячейка перехода пуста. Машина остановлена."); return;
         }
 
-        QString cellText = cell->text().trimmed();
-        if (cellText == ";;" || cellText == ",,") {
-            stopExecution("Встречена команда остановки ';;' или ',,'."); return;
-        }
-
+        QString cellText = cell->text();
+        // 🛑 Убрано правило ;;. Остановка только по '!' в таблице
         if (cellText.contains('!')) {
             stopExecution("В правиле таблицы обнаружен символ '!'. Аварийная остановка."); return;
         }
 
+        // 📦 Парсинг с поддержкой пробелов и запятых
         QString normalized = cellText.replace(',', ';');
         QStringList parts = normalized.split(';');
         if (parts.size() != 3) { stopExecution("Ошибка парсинга ячейки."); return; }
 
         QChar currentSym = tape->read();
-        QChar writeSym   = parts[0].isEmpty() ? currentSym : parts[0][0];
-        QString dir      = parts[1].trimmed().isEmpty() ? lastDir : parts[1].trimmed().toUpper();
-        QString nextState= parts[2].isEmpty()  ? currentState : parts[2];
 
+        // 1. Запись: пробел или пусто -> не менять
+        bool writeEmpty = parts[0].trimmed().isEmpty();
+        QChar writeSym = writeEmpty ? currentSym : parts[0].trimmed()[0];
+
+        // 2. Направление: пробел или пусто -> не двигаться (S)
+        QString dirStr = parts[1].trimmed();
+        QString dir = dirStr.isEmpty() ? "S" : dirStr.toUpper();
+
+        // 3. Состояние: пробел или пусто -> не менять
+        QString nextState = parts[2].trimmed().isEmpty() ? currentState : parts[2].trimmed();
+
+        // 🔧 Применение
         tape->write(writeSym);
-        if (dir == "L") { tape->moveLeft(); lastDir = "L"; }
-        else if (dir == "R") { tape->moveRight(); lastDir = "R"; }
-        else { lastDir = "S"; }
+        if (dir == "L") tape->moveLeft();
+        else if (dir == "R") tape->moveRight();
 
         currentState = nextState;
         highlightState(currentState);
-
-        if (currentState.toLower().contains("halt") || currentState.toLower().contains("stop")) {
-            stopExecution("Достигнуто терминальное состояние. Успешная остановка.");
-        }
     };
 
     auto updateTable = [&]() {
@@ -257,13 +271,12 @@ int main(int argc, char *argv[]) {
         statesLabel->setText("Состояния: " + states.join(", ")); updateTable();
     });
 
-    // ✅ ИСПРАВЛЕНО: - теперь мгновенно удаляет последнее состояние
     QObject::connect(btnRemState, &QPushButton::clicked, [&]() {
         if (states.size() <= 1) {
             QMessageBox::warning(&window, "Ошибка", "Должно остаться минимум одно состояние.");
             return;
         }
-        states.removeLast(); // Удаляем qN
+        states.removeLast();
         statesLabel->setText("Состояния: " + states.join(", "));
         updateTable();
     });
@@ -274,19 +287,20 @@ int main(int argc, char *argv[]) {
         tape->loadWord(word); initialWord = word; QMessageBox::information(&window, "Успех", "Строка загружена на ленту.");
     });
 
+    // ✅ ЗАПУСК: требует наличие '!' в таблице
     QObject::connect(btnStart, &QPushButton::clicked, [&]() {
         if (initialWord.isEmpty()) { QMessageBox::warning(&window, "Ошибка", "Сначала задайте входную строку."); return; }
-        if (!validateTable()) return;
+        if (!validateTable(true)) return;
         currentState = states.contains("q0") ? "q0" : states.first();
-        lastDir = "S";
         isRunning = true; lockUI(true); highlightState(currentState); runTimer->start();
     });
 
     QObject::connect(runTimer, &QTimer::timeout, [&]() { executeStep(); });
 
+    // ✅ ШАГ: проверяет только формат, игнорирует требование '!'
     QObject::connect(btnStep, &QPushButton::clicked, [&]() {
         if (initialWord.isEmpty()) return;
-        if (!validateTable()) return;
+        if (!validateTable(false)) return;
         if (currentState.isEmpty()) currentState = states.contains("q0") ? "q0" : states.first();
         executeStep(); highlightState(currentState);
     });
@@ -299,7 +313,6 @@ int main(int argc, char *argv[]) {
         stopExecution("Программа сброшена.");
         if (!initialWord.isEmpty()) tape->loadWord(initialWord); else tape->clear();
         currentState = states.contains("q0") ? "q0" : states.first();
-        lastDir = "S";
         highlightState("");
     });
 

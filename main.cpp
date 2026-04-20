@@ -31,10 +31,6 @@ int main(int argc, char *argv[]) {
     auto* alphaLayout = new QHBoxLayout;
     alphaLayout->addWidget(new QLabel("Алфавит ленты:"));
     alphaLayout->addWidget(editAlpha);
-    QLabel* lblEmpty = new QLabel("^");
-    lblEmpty->setFixedWidth(30); lblEmpty->setAlignment(Qt::AlignCenter);
-    lblEmpty->setStyleSheet("background: #f0f0f0; border: 1px solid #aaa; border-radius: 4px; font-weight: bold;");
-    alphaLayout->addWidget(lblEmpty);
     alphaLayout->addWidget(new QLabel("Доп. символы:"));
     alphaLayout->addWidget(editAdd);
     alphaLayout->addWidget(btnAlpha);
@@ -67,16 +63,18 @@ int main(int argc, char *argv[]) {
     wordLayout->addStretch();
 
     // === УПРАВЛЕНИЕ ===
-    auto* btnStep  = new QPushButton("▶ Шаг");
-    auto* btnStart = new QPushButton("▶▶ Запустить");
-    auto* btnStop  = new QPushButton("⏹ Остановить");
-    auto* btnReset = new QPushButton("🔄 Сброс");
-    auto* btnFaster= new QPushButton("⏩ Быстрее");
-    auto* btnSlower= new QPushButton("⏪ Медленнее");
+    auto* btnStep      = new QPushButton("▶ Шаг");
+    auto* btnStart     = new QPushButton("▶▶ Запустить");
+    auto* btnStop      = new QPushButton("⏹ Остановить");
+    auto* btnReset     = new QPushButton("🔄 Сброс");
+    auto* btnFaster    = new QPushButton("⏩ Быстрее");
+    auto* btnSlower    = new QPushButton("⏪ Медленнее");
+    auto* btnClearTable= new QPushButton("🗑 Очистить таблицу");
 
     auto* controlLayout = new QHBoxLayout;
     controlLayout->addWidget(btnStep); controlLayout->addWidget(btnStart);
     controlLayout->addWidget(btnStop); controlLayout->addWidget(btnReset);
+    controlLayout->addWidget(btnClearTable);
     controlLayout->addWidget(btnFaster); controlLayout->addWidget(btnSlower);
     controlLayout->addStretch();
 
@@ -84,7 +82,7 @@ int main(int argc, char *argv[]) {
     auto* mainLayout = new QVBoxLayout;
     mainLayout->addLayout(alphaLayout); mainLayout->addLayout(statesLayout);
     mainLayout->addWidget(tableRules, 2);
-    mainLayout->addWidget(new QLabel("Формат: Символ;Направление;Состояние | Пробел = не менять | ! = стоп"));
+    mainLayout->addWidget(new QLabel("Формат: Символ;Направление;Состояние | Пробел = не менять | ! в напр. = стоп | ! на ленте = стоп"));
     mainLayout->addLayout(wordLayout); mainLayout->addLayout(controlLayout);
     mainLayout->addWidget(tapeWidget, 3);
 
@@ -108,21 +106,20 @@ int main(int argc, char *argv[]) {
         btnRemState->setEnabled(!locked); editWord->setEnabled(!locked);
         btnWord->setEnabled(!locked); btnStep->setEnabled(!locked && !isRunning);
         btnStart->setEnabled(!locked);
+        btnClearTable->setEnabled(!locked);
     };
 
-    auto highlightState = [&](const QString& state) {
-        tableRules->clearSelection();
+    // 🔥 Подсветка КОНКРЕТНОЙ ячейки (row, col)
+    auto highlightCell = [&](int row, int col) {
         for (int r = 0; r < tableRules->rowCount(); ++r) {
             for (int c = 0; c < tableRules->columnCount(); ++c) {
                 auto* item = tableRules->item(r, c);
                 if (item) item->setData(Qt::BackgroundRole, QVariant());
             }
-            if (tableRules->verticalHeaderItem(r)->text() == state) {
-                for (int c = 0; c < tableRules->columnCount(); ++c) {
-                    auto* item = tableRules->item(r, c);
-                    if (item) item->setData(Qt::BackgroundRole, QColor(255, 250, 205));
-                }
-            }
+        }
+        if (row != -1 && col != -1) {
+            auto* item = tableRules->item(row, col);
+            if (item) item->setData(Qt::BackgroundRole, QColor(135, 206, 250)); // Голубая подсветка
         }
     };
 
@@ -130,10 +127,10 @@ int main(int argc, char *argv[]) {
         isRunning = false;
         runTimer->stop();
         lockUI(false);
+        highlightCell(-1, -1); // Убираем подсветку
         QMessageBox::information(&window, "Остановка", reason);
     };
 
-    // ✅ ВАЛИДАЦИЯ С ФЛАГОМ requireStop
     auto validateTable = [&](bool requireStop = true) -> bool {
         bool hasStop = false;
         QRegularExpression rulePattern(R"(^[^;]*;[^;]*;[^;]*$)");
@@ -145,21 +142,19 @@ int main(int argc, char *argv[]) {
                 QString txt = item->text();
                 if (txt.isEmpty()) continue;
 
-                // Единственное условие остановки - символ '!'
                 if (txt.contains('!')) hasStop = true;
 
-                // Проверка формата и направления
                 QString normalized = txt.replace(',', ';');
                 QStringList parts = normalized.split(';');
                 if (parts.size() != 3 || !rulePattern.match(normalized).hasMatch()) {
                     QMessageBox::warning(&window, "Ошибка формата ячейки",
-                                         QString("Ячейка [%1, %2]: неверный формат.\nОжидается: Символ;Направление(L/R/S/пробел);Состояние").arg(r+1).arg(c+1));
+                                         QString("Ячейка [%1, %2]: неверный формат.\nОжидается: Символ;Направление(L/R/S/!);Состояние").arg(r+1).arg(c+1));
                     return false;
                 }
-                QString dir = parts[1].trimmed();
-                if (!dir.isEmpty() && dir != "L" && dir != "R" && dir != "S") {
+                QString dir = parts[1].trimmed().toUpper();
+                if (!dir.isEmpty() && dir != "L" && dir != "R" && dir != "S" && dir != "!") {
                     QMessageBox::warning(&window, "Ошибка направления",
-                                         QString("Ячейка [%1, %2]: направление должно быть L, R, S или пусто/пробел.").arg(r+1).arg(c+1));
+                                         QString("Ячейка [%1, %2]: направление должно быть L, R, S, ! или пусто.").arg(r+1).arg(c+1));
                     return false;
                 }
             }
@@ -174,13 +169,16 @@ int main(int argc, char *argv[]) {
     };
 
     auto executeStep = [&]() {
-        // 🛑 Остановка при '!' на ленте
-        if (tape->read() == '!') {
+        QChar currentSym = tape->read();
+
+        // 🛑 1. Стоп при чтении '!' с ленты
+        if (currentSym == '!') {
             stopExecution("Головка прочитала символ '!'. Аварийная остановка."); return;
         }
 
         int stateRow = states.indexOf(currentState);
-        int symCol = currentSymbols.indexOf(QString(tape->read()));
+        int symCol = currentSymbols.indexOf(QString(currentSym));
+        highlightCell(stateRow, symCol); // Подсвечиваем текущую ячейку
 
         if (stateRow == -1 || symCol == -1) {
             stopExecution("Нет правила для текущего состояния и символа."); return;
@@ -192,36 +190,31 @@ int main(int argc, char *argv[]) {
         }
 
         QString cellText = cell->text();
-        // 🛑 Убрано правило ;;. Остановка только по '!' в таблице
-        if (cellText.contains('!')) {
-            stopExecution("В правиле таблицы обнаружен символ '!'. Аварийная остановка."); return;
-        }
-
-        // 📦 Парсинг с поддержкой пробелов и запятых
         QString normalized = cellText.replace(',', ';');
         QStringList parts = normalized.split(';');
         if (parts.size() != 3) { stopExecution("Ошибка парсинга ячейки."); return; }
 
-        QChar currentSym = tape->read();
-
-        // 1. Запись: пробел или пусто -> не менять
         bool writeEmpty = parts[0].trimmed().isEmpty();
         QChar writeSym = writeEmpty ? currentSym : parts[0].trimmed()[0];
 
-        // 2. Направление: пробел или пусто -> не двигаться (S)
-        QString dirStr = parts[1].trimmed();
-        QString dir = dirStr.isEmpty() ? "S" : dirStr.toUpper();
-
-        // 3. Состояние: пробел или пусто -> не менять
+        QString dirStr = parts[1].trimmed().toUpper();
         QString nextState = parts[2].trimmed().isEmpty() ? currentState : parts[2].trimmed();
 
-        // 🔧 Применение
+        // ✅ 2. СНАЧАЛА ЗАПИСЫВАЕМ СИМВОЛ (даже если потом будет стоп)
         tape->write(writeSym);
+
+        // ✅ 3. ПРОВЕРЯЕМ НА СТОП В НАПРАВЛЕНИИ
+        if (dirStr == "!") {
+            stopExecution("В поле направления указан '!'. Символ записан, выполнение остановлено.");
+            return;
+        }
+
+        // ✅ 4. ЕСЛИ НЕ СТОП: двигаем головку и меняем состояние
+        QString dir = dirStr.isEmpty() ? "S" : dirStr;
         if (dir == "L") tape->moveLeft();
         else if (dir == "R") tape->moveRight();
 
         currentState = nextState;
-        highlightState(currentState);
     };
 
     auto updateTable = [&]() {
@@ -258,9 +251,16 @@ int main(int argc, char *argv[]) {
         QString rawMain = editAlpha->text().trimmed();
         QString rawAdd  = editAdd->text().trimmed();
         currentSymbols.clear();
-        for (QChar c : rawMain) { QString s(c); if(!s.isEmpty() && !currentSymbols.contains(s)) currentSymbols.append(s); }
-        if (!currentSymbols.contains("^")) currentSymbols.append("^");
-        for (QChar c : rawAdd) { QString s(c); if(!s.isEmpty() && !currentSymbols.contains(s)) currentSymbols.append(s); }
+
+        for (QChar c : rawMain) {
+            QString s(c);
+            if (!s.isEmpty() && s != "^" && !currentSymbols.contains(s)) currentSymbols.append(s);
+        }
+        currentSymbols.append("^"); // ^ СТРОГО ПОСЛЕ основного алфавита
+        for (QChar c : rawAdd) {
+            QString s(c);
+            if (!s.isEmpty() && s != "^" && !currentSymbols.contains(s)) currentSymbols.append(s);
+        }
 
         if (currentSymbols.size() <= 1) { QMessageBox::warning(&window, "Ошибка", "Алфавит должен содержать хотя бы один рабочий символ!"); return; }
         updateTable(); tableRules->setEnabled(true); editWord->setEnabled(true); btnWord->setEnabled(true);
@@ -272,13 +272,9 @@ int main(int argc, char *argv[]) {
     });
 
     QObject::connect(btnRemState, &QPushButton::clicked, [&]() {
-        if (states.size() <= 1) {
-            QMessageBox::warning(&window, "Ошибка", "Должно остаться минимум одно состояние.");
-            return;
-        }
+        if (states.size() <= 1) { QMessageBox::warning(&window, "Ошибка", "Должно остаться минимум одно состояние."); return; }
         states.removeLast();
-        statesLabel->setText("Состояния: " + states.join(", "));
-        updateTable();
+        statesLabel->setText("Состояния: " + states.join(", ")); updateTable();
     });
 
     QObject::connect(btnWord, &QPushButton::clicked, [&]() {
@@ -287,22 +283,20 @@ int main(int argc, char *argv[]) {
         tape->loadWord(word); initialWord = word; QMessageBox::information(&window, "Успех", "Строка загружена на ленту.");
     });
 
-    // ✅ ЗАПУСК: требует наличие '!' в таблице
     QObject::connect(btnStart, &QPushButton::clicked, [&]() {
         if (initialWord.isEmpty()) { QMessageBox::warning(&window, "Ошибка", "Сначала задайте входную строку."); return; }
         if (!validateTable(true)) return;
         currentState = states.contains("q0") ? "q0" : states.first();
-        isRunning = true; lockUI(true); highlightState(currentState); runTimer->start();
+        isRunning = true; lockUI(true); runTimer->start();
     });
 
     QObject::connect(runTimer, &QTimer::timeout, [&]() { executeStep(); });
 
-    // ✅ ШАГ: проверяет только формат, игнорирует требование '!'
     QObject::connect(btnStep, &QPushButton::clicked, [&]() {
         if (initialWord.isEmpty()) return;
         if (!validateTable(false)) return;
         if (currentState.isEmpty()) currentState = states.contains("q0") ? "q0" : states.first();
-        executeStep(); highlightState(currentState);
+        executeStep();
     });
 
     QObject::connect(btnStop, &QPushButton::clicked, [&]() {
@@ -313,7 +307,15 @@ int main(int argc, char *argv[]) {
         stopExecution("Программа сброшена.");
         if (!initialWord.isEmpty()) tape->loadWord(initialWord); else tape->clear();
         currentState = states.contains("q0") ? "q0" : states.first();
-        highlightState("");
+    });
+
+    QObject::connect(btnClearTable, &QPushButton::clicked, [&]() {
+        for (int r = 0; r < tableRules->rowCount(); ++r)
+            for (int c = 0; c < tableRules->columnCount(); ++c) {
+                auto* item = tableRules->item(r, c);
+                if (item) item->setText("");
+            }
+        highlightCell(-1, -1);
     });
 
     QObject::connect(btnFaster, &QPushButton::clicked, [&]() {

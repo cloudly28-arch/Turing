@@ -1,6 +1,6 @@
 #pragma once
 #include <QObject>
-#include <QHash>
+#include <QMap>
 #include <QChar>
 
 class TuringTape : public QObject {
@@ -37,7 +37,7 @@ signals:
     void changed();
 
 private:
-    QHash<int, QChar> memory;
+    QMap<int, QChar> memory;
     int headPos = 0;
     QChar blank = '^';
 };

@@ -86,8 +86,6 @@ protected:
         float cellCenterX = cellLeftX + cellWidth / 2.0f;
         float y           = (height() - cellHeight) / 2.0f;
 
-        // НАСТРОЙКА ВЫСОТЫ: меняйте это число, чтобы поднять/опустить курсор
-        // Отрицательное значение поднимает вверх от верхней границы ячейки
         float cursorOffsetY = -15.0f;
 
         float triHalfW = cellWidth * 0.3f;
@@ -97,9 +95,9 @@ protected:
         float topY = y + cursorOffsetY;
 
         QPolygonF triangle;
-        triangle << QPointF(cellCenterX - triHalfW, topY)          // Левый верхний угол
-                 << QPointF(cellCenterX + triHalfW, topY)          // Правый верхний угол
-                 << QPointF(cellCenterX, topY + triH);             // Нижнее остриё
+        triangle << QPointF(cellCenterX - triHalfW, topY)
+                 << QPointF(cellCenterX + triHalfW, topY)
+                 << QPointF(cellCenterX, topY + triH);
 
         p.save();
         p.setPen(QPen(QColor(200, 50, 50), 2));
@@ -113,7 +111,7 @@ private:
     QTimer* animTimer = nullptr;
     float cursorPos   = 0.0f;
     float targetCursor = 0.0f;
-    float viewOffset  = 0.0f; // Плавное смещение камеры
+    float viewOffset  = 0.0f;
     const int cellWidth  = 40;
     const int cellHeight = 30;
 };

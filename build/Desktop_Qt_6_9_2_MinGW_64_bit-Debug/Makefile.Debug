@@ -523,7 +523,7 @@ debug/moc_tapewidget.cpp: ../../tapewidget.h \
 		C:/Qt/6.9.2/mingw_64/include/QtCore/QTimer \
 		C:/Qt/6.9.2/mingw_64/include/QtCore/qtimer.h \
 		../../turingtape.h \
-		C:/Qt/6.9.2/mingw_64/include/QtCore/QHash \
+		C:/Qt/6.9.2/mingw_64/include/QtCore/QMap \
 		C:/Qt/6.9.2/mingw_64/include/QtCore/QChar \
 		debug/moc_predefs.h \
 		C:/Qt/6.9.2/mingw_64/bin/moc.exe
@@ -640,8 +640,10 @@ debug/moc_turingtape.cpp: ../../turingtape.h \
 		C:/Qt/6.9.2/mingw_64/include/QtCore/qscopeguard.h \
 		C:/Qt/6.9.2/mingw_64/include/QtCore/qobject_impl.h \
 		C:/Qt/6.9.2/mingw_64/include/QtCore/qbindingstorage.h \
-		C:/Qt/6.9.2/mingw_64/include/QtCore/QHash \
-		C:/Qt/6.9.2/mingw_64/include/QtCore/qhash.h \
+		C:/Qt/6.9.2/mingw_64/include/QtCore/QMap \
+		C:/Qt/6.9.2/mingw_64/include/QtCore/qmap.h \
+		C:/Qt/6.9.2/mingw_64/include/QtCore/qshareddata.h \
+		C:/Qt/6.9.2/mingw_64/include/QtCore/qshareddata_impl.h \
 		C:/Qt/6.9.2/mingw_64/include/QtCore/QChar \
 		debug/moc_predefs.h \
 		C:/Qt/6.9.2/mingw_64/bin/moc.exe
@@ -925,7 +927,7 @@ debug/main.o: ../../main.cpp C:/Qt/6.9.2/mingw_64/include/QtWidgets/QApplication
 		C:/Qt/6.9.2/mingw_64/include/QtGui/QPainter \
 		C:/Qt/6.9.2/mingw_64/include/QtGui/qpainter.h \
 		../../turingtape.h \
-		C:/Qt/6.9.2/mingw_64/include/QtCore/QHash \
+		C:/Qt/6.9.2/mingw_64/include/QtCore/QMap \
 		C:/Qt/6.9.2/mingw_64/include/QtCore/QChar
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o debug/main.o ../../main.cpp
 

@@ -69,7 +69,7 @@ int main(int argc, char *argv[]) {
     auto* btnReset     = new QPushButton("🔄 Сброс");
     auto* btnFaster    = new QPushButton("⏩ Быстрее");
     auto* btnSlower    = new QPushButton("⏪ Медленнее");
-    auto* btnClearTable= new QPushButton("🗑 Очистить таблицу");
+    auto* btnClearTable= new QPushButton("Очистить таблицу");
 
     auto* controlLayout = new QHBoxLayout;
     controlLayout->addWidget(btnStep); controlLayout->addWidget(btnStart);
@@ -89,7 +89,7 @@ int main(int argc, char *argv[]) {
     auto* central = new QWidget; central->setLayout(mainLayout);
     window.setCentralWidget(central);
 
-    // === ПЕРЕМЕННЫЕ ===
+
     QStringList currentSymbols;
     QString currentState = "q0";
     QString initialWord = "";
@@ -162,7 +162,7 @@ int main(int argc, char *argv[]) {
 
         if (requireStop && !hasStop) {
             QMessageBox::warning(&window, "Ошибка валидации",
-                                 "В таблице не задано ни одного условия остановки (символ '!').\nСогласно ТЗ, автозапуск запрещён.");
+                                 "В таблице не задано ни одного условия остановки (символ '!')");
             return false;
         }
         return true;
@@ -192,7 +192,7 @@ int main(int argc, char *argv[]) {
         QString cellText = cell->text();
         QString normalized = cellText.replace(',', ';');
         QStringList parts = normalized.split(';');
-        if (parts.size() != 3) { stopExecution("Ошибка парсинга ячейки."); return; }
+        if (parts.size() != 3) { stopExecution("Ошибка, недостаточное количество правил"); return; }
 
         bool writeEmpty = parts[0].trimmed().isEmpty();
         QChar writeSym = writeEmpty ? currentSym : parts[0].trimmed()[0];
@@ -201,11 +201,14 @@ int main(int argc, char *argv[]) {
         QString nextState = parts[2].trimmed().isEmpty() ? currentState : parts[2].trimmed();
 
         // ✅ 2. СНАЧАЛА ЗАПИСЫВАЕМ СИМВОЛ (даже если потом будет стоп)
-        tape->write(writeSym);
+        if (writeSym != "!") {
+            tape->write(writeSym);
+
+        }
 
         // ✅ 3. ПРОВЕРЯЕМ НА СТОП В НАПРАВЛЕНИИ
         if (dirStr == "!") {
-            stopExecution("В поле направления указан '!'. Символ записан, выполнение остановлено.");
+            stopExecution("В поле указан '!'. Произошла остановка");
             return;
         }
 

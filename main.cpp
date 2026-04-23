@@ -23,7 +23,7 @@ int main(int argc, char *argv[]) {
     auto* tape = new TuringTape(&window);
     auto* tapeWidget = new TapeWidget(tape, &window);
 
-    // === АЛФАВИТЫ ===
+    // АЛФАВИТЫ
     auto* editAlpha = new QLineEdit;
     auto* editAdd   = new QLineEdit;
     auto* btnAlpha  = new QPushButton("Задать алфавиты");
@@ -35,7 +35,7 @@ int main(int argc, char *argv[]) {
     alphaLayout->addWidget(editAdd);
     alphaLayout->addWidget(btnAlpha);
 
-    // === СОСТОЯНИЯ ===
+    // СОСТОЯНИЯ
     QStringList states = {"q0"};
     auto* statesLabel = new QLabel("Состояния: q0");
     auto* btnAddState = new QPushButton("+");
@@ -46,14 +46,14 @@ int main(int argc, char *argv[]) {
     statesLayout->addWidget(btnAddState); statesLayout->addWidget(btnRemState);
     statesLayout->addWidget(statesLabel); statesLayout->addStretch();
 
-    // === ТАБЛИЦА ===
+    // ТАБЛИЦА
     auto* tableRules = new QTableWidget(0, 0);
     tableRules->setEditTriggers(QAbstractItemView::DoubleClicked);
     tableRules->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
     tableRules->verticalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
     tableRules->setEnabled(false); tableRules->setAlternatingRowColors(true);
 
-    // === ВХОДНОЕ СЛОВО ===
+    // ВХОДНОЕ СЛОВО
     auto* editWord = new QLineEdit;
     auto* btnWord  = new QPushButton("Задать строку");
     editWord->setEnabled(false); btnWord->setEnabled(false);
@@ -62,7 +62,7 @@ int main(int argc, char *argv[]) {
     wordLayout->addWidget(editWord); wordLayout->addWidget(btnWord);
     wordLayout->addStretch();
 
-    // === УПРАВЛЕНИЕ ===
+    // УПРАВЛЕНИЕ
     auto* btnStep      = new QPushButton("▶ Шаг");
     auto* btnStart     = new QPushButton("▶▶ Запустить");
     auto* btnStop      = new QPushButton("⏹ Остановить");
@@ -78,7 +78,7 @@ int main(int argc, char *argv[]) {
     controlLayout->addWidget(btnFaster); controlLayout->addWidget(btnSlower);
     controlLayout->addStretch();
 
-    // === КОМПОНОВКА ===
+    // КОМПОНОВКА
     auto* mainLayout = new QVBoxLayout;
     mainLayout->addLayout(alphaLayout); mainLayout->addLayout(statesLayout);
     mainLayout->addWidget(tableRules, 2);
@@ -99,7 +99,7 @@ int main(int argc, char *argv[]) {
     runTimer->setSingleShot(false);
     runTimer->setInterval(stepInterval);
 
-    // === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
+    // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
     auto lockUI = [&](bool locked) {
         editAlpha->setEnabled(!locked); editAdd->setEnabled(!locked);
         btnAlpha->setEnabled(!locked); btnAddState->setEnabled(!locked);
@@ -109,7 +109,7 @@ int main(int argc, char *argv[]) {
         btnClearTable->setEnabled(!locked);
     };
 
-    // 🔥 Подсветка КОНКРЕТНОЙ ячейки (row, col)
+    // Подсветка ячейки (row, col)
     auto highlightCell = [&](int row, int col) {
         for (int r = 0; r < tableRules->rowCount(); ++r) {
             for (int c = 0; c < tableRules->columnCount(); ++c) {
@@ -171,7 +171,7 @@ int main(int argc, char *argv[]) {
     auto executeStep = [&]() {
         QChar currentSym = tape->read();
 
-        // 🛑 1. Стоп при чтении '!' с ленты
+        // Стоп при чтении '!' с ленты
         if (currentSym == '!') {
             stopExecution("Головка прочитала символ '!'. Аварийная остановка."); return;
         }
@@ -200,19 +200,19 @@ int main(int argc, char *argv[]) {
         QString dirStr = parts[1].trimmed().toUpper();
         QString nextState = parts[2].trimmed().isEmpty() ? currentState : parts[2].trimmed();
 
-        // ✅ 2. СНАЧАЛА ЗАПИСЫВАЕМ СИМВОЛ (даже если потом будет стоп)
+        // СНАЧАЛА ЗАПИСЫВАЕМ СИМВОЛ (даже если потом будет стоп)
         if (writeSym != "!") {
             tape->write(writeSym);
 
         }
 
-        // ✅ 3. ПРОВЕРЯЕМ НА СТОП В НАПРАВЛЕНИИ
+        // ПРОВЕРЯЕМ НА СТОП В НАПРАВЛЕНИИ
         if (dirStr == "!") {
             stopExecution("В поле указан '!'. Произошла остановка");
             return;
         }
 
-        // ✅ 4. ЕСЛИ НЕ СТОП: двигаем головку и меняем состояние
+        // ЕСЛИ НЕ СТОП: двигаем головку и меняем состояние
         QString dir = dirStr.isEmpty() ? "S" : dirStr;
         if (dir == "L") tape->moveLeft();
         else if (dir == "R") tape->moveRight();
@@ -249,7 +249,7 @@ int main(int argc, char *argv[]) {
         }
     };
 
-    // === ЛОГИКА КНОПОК ===
+    // ЛОГИКА КНОПОК
     QObject::connect(btnAlpha, &QPushButton::clicked, [&]() {
         QString rawMain = editAlpha->text().trimmed();
         QString rawAdd  = editAdd->text().trimmed();

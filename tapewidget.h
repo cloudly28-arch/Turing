@@ -32,10 +32,10 @@ private slots:
         if (std::abs(cursorDiff) < 0.001f) {
             cursorPos = targetCursor;
         } else {
-            cursorPos += cursorDiff * 0.15f; // Коэффициент плавности
+            cursorPos += cursorDiff * 0.15f;
         }
 
-        // 2. Авто-скролл ленты при приближении к краю
+        // при приближении к краю
         float visibleCells = width() / cellWidth;
         float leftMargin  = 4.0f;
         float rightMargin = visibleCells - leftMargin;
@@ -47,7 +47,6 @@ private slots:
 
         if (std::abs(scrollDiff) > 0.001f) viewOffset += scrollDiff * 0.15f;
 
-        // Останавливаем таймер, когда анимация завершилась
         if (std::abs(cursorDiff) < 0.001f && std::abs(scrollDiff) < 0.001f) {
             animTimer->stop();
         }
@@ -69,7 +68,7 @@ protected:
         int startIdx = static_cast<int>(viewOffset) - 1;
         int endIdx   = static_cast<int>(viewOffset + visibleCells) + 1;
 
-        // 1. Фиксированная сетка ячеек
+        // Фиксированная сетка ячеек
         for (int i = startIdx; i <= endIdx; ++i) {
             float x = (i - viewOffset) * cellWidth;
             float y = (height() - cellHeight) / 2.0f;
@@ -81,7 +80,6 @@ protected:
             p.drawText(qRound(x), qRound(y), cellWidth, cellHeight, Qt::AlignCenter, text);
         }
 
-        // 2. Треугольный курсор
         float cellLeftX   = (cursorPos - viewOffset) * cellWidth;
         float cellCenterX = cellLeftX + cellWidth / 2.0f;
         float y           = (height() - cellHeight) / 2.0f;
@@ -91,7 +89,6 @@ protected:
         float triHalfW = cellWidth * 0.3f;
         float triH     = cellHeight * 0.45f;
 
-        // Верхняя линия треугольника
         float topY = y + cursorOffsetY;
 
         QPolygonF triangle;

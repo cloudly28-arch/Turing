@@ -133,16 +133,18 @@ int main(int argc, char *argv[]) {
 
     auto validateTable = [&](bool requireStop = true) -> bool {
         bool hasStop = false;
+        bool hasStop3 = false;
         QRegularExpression rulePattern(R"(^[^;]*;[^;]*;[^;]*$)");
-
+        bool hasStop2 = false;
         for (int r = 0; r < tableRules->rowCount(); ++r) {
             for (int c = 0; c < tableRules->columnCount(); ++c) {
                 auto* item = tableRules->item(r, c);
                 if (!item) continue;
                 QString txt = item->text();
                 if (txt.isEmpty()) continue;
-
                 if (txt.contains('!')) hasStop = true;
+                qDebug() << txt;
+
 
                 QString normalized = txt.replace(',', ';');
                 QStringList parts = normalized.split(';');
@@ -157,9 +159,14 @@ int main(int argc, char *argv[]) {
                                          QString("Ячейка [%1, %2]: направление должно быть L, R, S, ! или пусто.").arg(r+1).arg(c+1));
                     return false;
                 }
+                QString dir0 = parts[0];
+                if (!currentSymbols.contains(dir0) && dir0 != "!" && !dir0.isEmpty()  ) {
+                    QMessageBox::warning(&window, "Ошибка направления",
+                                         QString("Ячейка [%1, %2]: нет в алфавите").arg(r+1).arg(c+1));
+                    return false;
+                }
             }
         }
-
         if (requireStop && !hasStop) {
             QMessageBox::warning(&window, "Ошибка валидации",
                                  "В таблице не задано ни одного условия остановки (символ '!')");
@@ -200,7 +207,7 @@ int main(int argc, char *argv[]) {
         QString dirStr = parts[1].trimmed().toUpper();
         QString nextState = parts[2].trimmed().isEmpty() ? currentState : parts[2].trimmed();
 
-        // СНАЧАЛА ЗАПИСЫВАЕМ СИМВОЛ (даже если потом будет стоп)
+
         if (writeSym != "!") {
             tape->write(writeSym);
 
@@ -259,7 +266,7 @@ int main(int argc, char *argv[]) {
             QString s(c);
             if (!s.isEmpty() && s != "^" && !currentSymbols.contains(s)) currentSymbols.append(s);
         }
-        currentSymbols.append("^"); // ^ СТРОГО ПОСЛЕ основного алфавита
+        currentSymbols.append("^");
         for (QChar c : rawAdd) {
             QString s(c);
             if (!s.isEmpty() && s != "^" && !currentSymbols.contains(s)) currentSymbols.append(s);
@@ -288,6 +295,7 @@ int main(int argc, char *argv[]) {
 
     QObject::connect(btnStart, &QPushButton::clicked, [&]() {
         if (initialWord.isEmpty()) { QMessageBox::warning(&window, "Ошибка", "Сначала задайте входную строку."); return; }
+
         if (!validateTable(true)) return;
         currentState = states.contains("q0") ? "q0" : states.first();
         isRunning = true; lockUI(true); runTimer->start();
